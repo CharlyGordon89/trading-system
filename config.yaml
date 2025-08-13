@@ -21,3 +21,15 @@ data_dir: "data"
 assets_parquet: "data/assets.parquet"
 macro_parquet: "data/macro.parquet"
 merged_parquet: "data/merged.parquet"
+risk_parquet: "data/risk.parquet"
+
+
+# --- RISK PARAMS (MVP) ---
+risk:
+  ret_col: "ret"
+  vol_window: 20
+  var_window: 60
+  cvar_alpha: 0.05
+  liq_window: 20
+
+
