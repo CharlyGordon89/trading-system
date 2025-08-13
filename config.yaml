@@ -48,3 +48,17 @@ optimizer:
       uncertainty: 0.10        # 10%/year std belief
 
 
+# --- Backtest (MVP) ---
+backtest:
+  rebalance: "M"        # monthly
+  initial_capital: 500000
+  tc_bps: 5             # transaction cost in basis points (0.05%) per 1x turnover
+  benchmark: "SPY"      # S&P 500 proxy
+  lookback: 252         # lookback used by optimizer at each rebalance
+
+# Outputs
+backtest_parquet: "data/backtest_results.parquet"
+perf_plot_path: "data/perf_equity_vs_benchmark.png"
+dd_plot_path: "data/rolling_drawdown.png"
+
+

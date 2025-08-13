@@ -37,3 +37,4 @@ data/*.parquet
 data/*.csv
 data/*.feather
 data/*.pkl
+data/*.png

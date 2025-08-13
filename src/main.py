@@ -1,14 +1,35 @@
 from __future__ import annotations
 import sys
 import yaml
+import pandas as pd
 from src.data_loader import ingest
 from src.risk_model import compute_risk_metrics
 from src.utils_io import to_parquet
 from src.optimizer.bl import optimize_allocation
+from src.backtest import run_backtest
+from src.dashboard import plot_equity, plot_drawdown
 
 def _load_cfg(path: str):
     with open(path, "r") as f:
         return yaml.safe_load(f)
+
+def _save_placeholder_plots(cfg: dict, msg: str) -> None:
+    perf_path = cfg.get("perf_plot_path", "data/perf_equity_vs_benchmark.png")
+    dd_path = cfg.get("dd_plot_path", "data/rolling_drawdown.png")
+    # minimal placeholder dataframe (so plotting code works)
+    dates = pd.date_range("2000-01-01", periods=2, freq="D")
+    df = pd.DataFrame(
+        {
+            "portfolio_equity": [1.0, 1.0],
+            "benchmark_equity": [1.0, 1.0],
+            "drawdown": [0.0, 0.0],
+        },
+        index=dates,
+    )
+    print(f"[WARN] {msg} — writing placeholder plots.")
+    plot_equity(df, perf_path)
+    plot_drawdown(df, dd_path)
+    print(f"[OK] Placeholder plots saved: {perf_path} | {dd_path}")
 
 def main(cfg_path: str = "config.yaml") -> None:
     cfg = _load_cfg(cfg_path)
@@ -28,21 +49,30 @@ def main(cfg_path: str = "config.yaml") -> None:
     )
     to_parquet(risk_df, cfg.get("risk_parquet", "data/risk.parquet"))
 
-    # --- Allocation (MVP Black–Litterman) ---
+    # --- Allocation snapshot (existing) ---
     alloc_cfg = {"ret_col": rparams.get("ret_col", "ret"), **cfg.get("optimizer", {})}
     weights_df = optimize_allocation(risk_df=risk_df, opt_cfg=alloc_cfg)
     to_parquet(weights_df, cfg.get("weights_parquet", "data/weights_latest.parquet"))
 
+    # --- Backtest + Plots (defensive) ---
+    bt_cfg = cfg.get("backtest", {})
+    try:
+        perf_df, w_hist_df = run_backtest(risk_df, optimizer_cfg=alloc_cfg, backtest_cfg=bt_cfg)
+        to_parquet(perf_df, cfg.get("backtest_parquet", "data/backtest_results.parquet"))
+        # Debug info to confirm plotting inputs
+        print(f"[DEBUG] Backtest rows: {len(perf_df)}, "
+              f"date range: {perf_df.index.min()} → {perf_df.index.max()}")
+        plot_equity(perf_df, cfg.get("perf_plot_path", "data/perf_equity_vs_benchmark.png"))
+        plot_drawdown(perf_df, cfg.get("dd_plot_path", "data/rolling_drawdown.png"))
+        print(f"[OK] Plots saved: {cfg.get('perf_plot_path')} | {cfg.get('dd_plot_path')}")
+    except Exception as e:
+        _save_placeholder_plots(cfg, f"Backtest failed: {e}")
+
     # --- Console summary ---
-    print(f"[OK] Assets: {len(assets):,} rows, {assets['symbol'].nunique() if not assets.empty else 0} symbols")
-    print(f"[OK] Macro:  {len(macro):,} rows, {macro.shape[1] if not macro.empty else 0} series")
-    print(f"[OK] Merged: {len(merged):,} rows")
-    print(f"[OK] Risk:   {len(risk_df):,} rows, cols={list(risk_df.columns)}")
+    print(f"[OK] Assets: {len(assets):,} rows")
+    print(f"[OK] Risk:   {len(risk_df):,} rows")
     if not weights_df.empty:
-        print(f"[OK] Weights ({len(weights_df)}):")
-        print(weights_df.sort_values('weight', ascending=False).to_string(index=False))
-    else:
-        print("[WARN] No weights produced (insufficient data).")
+        print(f"[OK] Latest weights:\n{weights_df.sort_values('weight', ascending=False).to_string(index=False)}")
 
 if __name__ == "__main__":
     cfg = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
