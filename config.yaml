@@ -32,4 +32,19 @@ risk:
   cvar_alpha: 0.05
   liq_window: 20
 
+optimizer:
+  lookback: 252      # trading days used to estimate μ, Σ
+  gamma: 2.5         # risk aversion (mean-variance utility)
+  tau: 0.05          # BL uncertainty scalar on prior
+  long_only: true
+  market_weights: equal   # MVP: equal weights as market proxy
+
+  # Optional views (MVP example): BTC expected to beat TLT by 5% annualized
+  views:
+    - type: relative
+      long: "BTC-USD"
+      short: "TLT"
+      annualized_delta: 0.05   # +5%/year
+      uncertainty: 0.10        # 10%/year std belief
+
 
