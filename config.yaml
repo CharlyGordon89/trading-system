@@ -62,3 +62,4 @@ perf_plot_path: "data/perf_equity_vs_benchmark.png"
 dd_plot_path: "data/rolling_drawdown.png"
 
 
+
