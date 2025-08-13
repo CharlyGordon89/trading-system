@@ -35,8 +35,8 @@ def compute_risk_metrics(
     df = assets.copy()
     # 1) Returns
     df[ret_col] = (
-        df.groupby("symbol", observed=True)["close"]
-          .transform(lambda s: s.pct_change())
+    df.groupby("symbol", observed=True)["close"]
+      .transform(lambda s: s.pct_change(fill_method=None))
     )
 
     # 2) Volatility (rolling std of returns)

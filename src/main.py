@@ -3,6 +3,7 @@ import sys
 import logging
 import yaml
 import pandas as pd
+
 from src.data_loader import ingest
 from src.risk_model import compute_risk_metrics
 from src.utils_io import to_parquet
@@ -36,6 +37,8 @@ def _save_placeholder_plots(cfg: dict, msg: str) -> None:
 
 def main(cfg_path: str = "config.yaml") -> None:
     cfg = _load_cfg(cfg_path)
+
+    # --- Ingest ---
     dfs = ingest(cfg_path)
     assets, macro, merged = dfs["assets"], dfs["macro"], dfs["merged"]
 
@@ -52,13 +55,15 @@ def main(cfg_path: str = "config.yaml") -> None:
     )
     to_parquet(risk_df, cfg.get("risk_parquet", "data/risk.parquet"))
 
-    # --- Allocation snapshot (existing) ---
+    # --- Allocation snapshot (BL) ---
     alloc_cfg = {"ret_col": rparams.get("ret_col", "ret"), **cfg.get("optimizer", {})}
     weights_df = optimize_allocation(risk_df=risk_df, opt_cfg=alloc_cfg)
     to_parquet(weights_df, cfg.get("weights_parquet", "data/weights_latest.parquet"))
 
     # --- Backtest + Plots (defensive) ---
     bt_cfg = cfg.get("backtest", {})
+    perf_path = cfg.get("perf_plot_path", "data/perf_equity_vs_benchmark.png")
+    dd_path = cfg.get("dd_plot_path", "data/rolling_drawdown.png")
     try:
         perf_df, w_hist_df = run_backtest(risk_df, optimizer_cfg=alloc_cfg, backtest_cfg=bt_cfg)
         to_parquet(perf_df, cfg.get("backtest_parquet", "data/backtest_results.parquet"))
@@ -69,19 +74,15 @@ def main(cfg_path: str = "config.yaml") -> None:
             perf_df.index.min(),
             perf_df.index.max(),
         )
-        plot_equity(perf_df, cfg.get("perf_plot_path", "data/perf_equity_vs_benchmark.png"))
-        plot_drawdown(perf_df, cfg.get("dd_plot_path", "data/rolling_drawdown.png"))
-        logger.info(
-            "Plots saved: %s | %s",
-            cfg.get("perf_plot_path"),
-            cfg.get("dd_plot_path"),
-        )
+        plot_equity(perf_df, perf_path)
+        plot_drawdown(perf_df, dd_path)
+        logger.info("Plots saved: %s | %s", perf_path, dd_path)
     except Exception as e:
         _save_placeholder_plots(cfg, f"Backtest failed: {e}")
 
-    # --- Console summary ---
-    logger.info("Assets: %,d rows", len(assets))
-    logger.info("Risk:   %,d rows", len(risk_df))
+    # --- Console summary (use f-strings for thousands separators) ---
+    logger.info(f"Assets: {len(assets):,} rows")
+    logger.info(f"Risk:   {len(risk_df):,} rows")
     if not weights_df.empty:
         logger.info(
             "Latest weights:\n%s",

@@ -34,3 +34,28 @@ def test_weights_sum_to_one_and_nonnegative():
     assert (w["weight"] >= -1e-8).all()
     # sanity: at least one positive weight
     assert (w["weight"] > 0).any()
+
+
+def test_optimizer_fallback_on_singular_matrix():
+    dates = pd.date_range("2023-01-01", periods=100, freq="B")
+    rng = np.random.default_rng(0)
+    base = rng.standard_normal(len(dates))
+    rets = {"AAA": base, "BBB": base, "CCC": rng.standard_normal(len(dates))}
+    frames = [pd.DataFrame({"symbol": s, "ret": r, "close": 100.0, "volume": 1_000}, index=dates) for s, r in rets.items()]
+    df = pd.concat(frames).sort_index()
+
+    cfg = {
+        "ret_col": "ret",
+        "lookback": 90,
+        "gamma": 2.5,
+        "tau": 0.05,
+        "long_only": True,
+        "shrinkage": 0.10,
+        "enable_equal_weight_fallback": True,
+    }
+    w = optimize_allocation(df, cfg)
+    assert abs(w["weight"].sum() - 1.0) < 1e-6
+    assert (w["weight"] >= 0).all()
+    # If fallback was used, weights should be near equal; allow tolerance
+    target = np.ones(len(w)) / len(w)
+    assert (np.abs(w["weight"].to_numpy() - target) <= 0.2).all()
