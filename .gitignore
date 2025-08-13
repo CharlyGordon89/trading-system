@@ -1,0 +1,39 @@
+# OS / Editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.python-version
+.mypy_cache/
+.pytype/
+coverage.xml
+htmlcov/
+.coverage
+.tox/
+.cache/
+dist/
+build/
+
+# Envs
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+
+# Local config & secrets
+.env
+
+# Data artifacts
+data/*.parquet
+data/*.csv
+data/*.feather
+data/*.pkl

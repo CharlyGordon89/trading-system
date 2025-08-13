@@ -1,0 +1,23 @@
+# Symbols kept tiny for MVP; extend anytime
+equities:
+  - VOO
+  - QQQ
+bonds:
+  - TLT
+crypto:
+  - BTC-USD
+
+macro:
+  # FRED series IDs
+  - CPIAUCSL      # CPI (Index)
+  - T10Y3M        # 10Y minus 3M spread
+
+# Daily bars since 2018 for a quick first backtest later
+start_date: "2018-01-01"
+interval: "1d"
+
+# Output
+data_dir: "data"
+assets_parquet: "data/assets.parquet"
+macro_parquet: "data/macro.parquet"
+merged_parquet: "data/merged.parquet"
